@@ -64,9 +64,9 @@ const startFaceDetection = async (
       threshold
     );
     const bestMatch = faceMatcher.findBestMatch(faceDescription.descriptor);
-    if (bestMatch.distance >= 0.4) {
+    if (bestMatch.distance >= 0.2) {
       const box = faceDescription.detection.box;
-      const text = bestMatch.toString();
+      const text = bestMatch.toString(false);
       const drawBox = new faceapi.draw.DrawBox(box, {
         label: text,
         boxColor: 'green',
