@@ -4,7 +4,6 @@ const getLabeledFaceDescriptors = async () => {
   try {
     const response = await fetch('/src/faces/faces.json');
     const faces = await response.json();
-    console.log('DEBUG: getFaces', faces);
     return Promise.all(
       faces.map(async (face) => {
         const imageUrl = `/src/faces/${face.image}`;
@@ -24,7 +23,7 @@ const getLabeledFaceDescriptors = async () => {
       })
     );
   } catch (error) {
-    console.error('DEBUG getFacgetLabeledFaceDescriptorses ', error);
+    console.error('DEBUG getLabeledFaceDescriptors ', error);
   }
 };
 
@@ -34,10 +33,16 @@ const loadThenStartFaceDetection = async (video) => {
   const displaySize = { width: video.width, height: video.height };
   faceapi.matchDimensions(canvas, displaySize);
 
-  startFaceDetection(canvas, displaySize, video);
+  const labeledFaceDescriptors = await getLabeledFaceDescriptors();
+  startFaceDetection(canvas, displaySize, labeledFaceDescriptors, video);
 };
 
-const startFaceDetection = async (canvas, displaySize, video) => {
+const startFaceDetection = async (
+  canvas,
+  displaySize,
+  labeledFaceDescriptors,
+  video
+) => {
   // detect face in camera
   const detection = await faceapi
     .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
@@ -52,8 +57,6 @@ const startFaceDetection = async (canvas, displaySize, video) => {
     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
     faceapi.draw.drawDetections(canvas, faceDescription);
 
-    const labeledFaceDescriptors = await getLabeledFaceDescriptors(); // get face images in faces folder
-
     // find best match in camera
     const threshold = 0.6;
     const faceMatcher = new faceapi.FaceMatcher(
@@ -61,17 +64,23 @@ const startFaceDetection = async (canvas, displaySize, video) => {
       threshold
     );
     const bestMatch = faceMatcher.findBestMatch(faceDescription.descriptor);
-    const box = faceDescription.detection.box;
-    const text = bestMatch.toString();
-    const drawBox = new faceapi.draw.DrawBox(box, {
-      label: text,
-      boxColor: 'green',
-    });
-    drawBox.draw(canvas);
+    if (bestMatch.distance >= 0.4) {
+      const box = faceDescription.detection.box;
+      const text = bestMatch.toString();
+      const drawBox = new faceapi.draw.DrawBox(box, {
+        label: text,
+        boxColor: 'green',
+      });
+      drawBox.draw(canvas);
+    }
   }
 
   // if no face detected, keep detecting...
-  setTimeout(() => startFaceDetection(canvas, displaySize, video), 100);
+  setTimeout(
+    () =>
+      startFaceDetection(canvas, displaySize, labeledFaceDescriptors, video),
+    100
+  );
 };
 
 const startVideo = (video) => {
